@@ -298,35 +298,58 @@ def download_models_and_videos():
 
 def pip_download(pkgs, dest_dir: Path, py_ver: str, abi: str, platform_tag: str):
     """
-    Use pip download to fetch wheels for a target platform/py version/abi.
-    Opinionated flags: only wheels (no source), specific platform and ABI.
-    Fail if pip cannot resolve a wheel (we do not accept source archives).
+    Download wheels using pip_download_recursive.py, which evaluates environment markers
+    against the Raspberry Pi target (from pi_markers_full.json) and fetches only wheels
+    for the specified platform tag.
     """
+    script_path = Path(__file__).with_name("pip_download_recursive.py")
+    markers_path = Path(__file__).with_name("pi_markers_full.json")
+
+    if not script_path.exists():
+        fail(f"Missing helper script: {script_path}")
+    if not markers_path.exists():
+        fail(f"Missing target marker JSON: {markers_path}")
+
+    staging_dir = Path("temp_downloaded_pip_packages").resolve()
+    if staging_dir.exists():
+        shutil.rmtree(staging_dir, ignore_errors=True)
+
     cmd = [
-        sys.executable, "-m", "pip", "download",
-        "--only-binary", ":all:",
-        "--platform", platform_tag,
-        "--implementation", "cp",
-        "--python-version", py_ver,     # e.g., "3.11"
-        "--abi", abi,                   # e.g., "cp311"
-        "--dest", str(dest_dir),
-    ] + pkgs
+        sys.executable, str(script_path),
+        "--markers-json", str(markers_path),
+        "--platform-tag", platform_tag,
+        "--dest", str(staging_dir),
+        "--packages", *pkgs,
+    ]
     print("Running:", " ".join(cmd))
     try:
         run(cmd, check=True)
     except subprocess.CalledProcessError as e:
         fail(
-            "pip download failed for the specified package set.\n"
+            "pip_download_recursive.py failed while attempting to download wheels.\n"
             f"Command was:\n  {' '.join(cmd)}\n\n"
-            "Reasons this happens:\n"
-            "  • The package has no prebuilt wheel for manylinux aarch64 and your Python version.\n"
-            "  • The exact version pinned does not exist for that platform.\n"
-            "  • A package uses 'git+' sources (requires cloning instead).\n\n"
-            "What to ask to fix:\n"
-            "  'Which package lacks an aarch64 wheel for my Python version, and what version should I pin instead?'\n"
-            "  'For git+ dependencies, can you clone them to third_party/ so I can install offline?'\n"
-            f"pip returned: {e}"
+            f"{e}"
         )
+
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    if not staging_dir.exists():
+        fail("Expected staging directory was not created.")
+
+    moved = 0
+    for item in staging_dir.iterdir():
+        if item.is_file():
+            target = dest_dir / item.name
+            if target.exists():
+                target.unlink()
+            shutil.move(str(item), str(target))
+            moved += 1
+
+    try:
+        shutil.rmtree(staging_dir, ignore_errors=True)
+    except Exception:
+        pass
+
+    print(f"Moved {moved} wheel(s) into: {dest_dir}")
 
 def compute_abi(py_ver: str) -> str:
     # py_ver like "3.11" -> abi "cp311"
