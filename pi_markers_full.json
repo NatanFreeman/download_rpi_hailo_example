@@ -1,0 +1,20 @@
+{
+  "extra": "",
+  "implementation_name": "cpython",
+  "implementation_version": "3.11.2",
+  "os.name": "posix",
+  "os_name": "posix",
+  "platform.machine": "aarch64",
+  "platform.python_implementation": "CPython",
+  "platform.version": "#1 SMP PREEMPT Debian 1:6.12.47-1+rpt1~bookworm (2025-09-16)",
+  "platform_machine": "aarch64",
+  "platform_python_implementation": "CPython",
+  "platform_release": "6.12.47+rpt-rpi-2712",
+  "platform_system": "Linux",
+  "platform_version": "#1 SMP PREEMPT Debian 1:6.12.47-1+rpt1~bookworm (2025-09-16)",
+  "python_full_version": "3.11.2",
+  "python_implementation": "CPython",
+  "python_version": "3.11",
+  "sys.platform": "linux",
+  "sys_platform": "linux"
+}
